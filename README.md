@@ -31,3 +31,19 @@ catkin build
 ```
 
 ---
+
+## Run
+
+To run executables:
+
+```shell
+cd ~/catkin_ws/devel/lib/gt_sam_sandbox
+./gt_sam_sandbox_iot_slam_concept_main
+```
+
+---
+
+## TODOs
+
+- generate factors between landmarks (representing iot devices)
+- calibrate between factor noise to represent noise expected of LIO/VIO/LVIO odometry system
