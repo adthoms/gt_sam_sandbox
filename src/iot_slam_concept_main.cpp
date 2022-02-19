@@ -192,11 +192,11 @@ int main(int argc, char* argv[]) {
   gtsam::Values result =
       gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
 
-  // print results
-  std::ofstream results_file(full_file_path + "optimization_results.txt");
+  // print optimized poses
+  std::vector<gtsam::Pose3> optimized_poses;
   for (size_t i = 0; i < ground_truth_poses.size(); ++i)
-    results_file << result.at<gtsam::Pose3>(gtsam::Symbol('x', i)).translation()
-                 << std::endl;
+    optimized_poses.push_back(result.at<gtsam::Pose3>(gtsam::Symbol('x', i)));
+  PrintPoses(optimized_poses, full_file_path + "optimized_poses.txt");
 
   return 0;
 }
