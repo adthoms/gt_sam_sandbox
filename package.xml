@@ -13,4 +13,5 @@
   <build_depend>GTSAM</build_depend>
   <exec_depend>GTSAM</exec_depend>
   <depend>roscpp</depend>
+  <depend>rosbag</depend>
 </package>

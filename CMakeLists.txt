@@ -9,6 +9,7 @@ find_package(
   catkin REQUIRED
   COMPONENTS
     roscpp
+    rosbag
 )
 
 find_package(GTSAM REQUIRED QUIET)
