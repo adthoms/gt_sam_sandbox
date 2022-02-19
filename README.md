@@ -10,6 +10,7 @@ See the following [link](https://github.com/BEAMRobotics/beam_robotics/wiki/Beam
 
 - install_cmake
 - install_eigen3
+- install_gtsam
 
 ---
 
