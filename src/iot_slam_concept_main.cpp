@@ -19,7 +19,7 @@ double randf(double ub, double lb) {
   return lb + f * (ub - lb);
 }
 
-void perturb_translation(double total_error, gtsam::Pose3& delta) {
+void PerturbTranslation(double total_error, gtsam::Pose3& delta) {
   // divide total error among xyz axes
   total_error = std::abs(total_error);
   const double x_error = round(randf(-1, 1)) * randf(total_error, 0);
@@ -35,35 +35,30 @@ void perturb_translation(double total_error, gtsam::Pose3& delta) {
   delta = delta.compose(delta_perturbed);
 }
 
-std::vector<gtsam::Point3> CreatePoints(double noise = 0) {
-  // Create the set of ground-truth landmarks
-  std::vector<gtsam::Point3> points;
-  points.push_back(gtsam::Point3(0.0, -30.0, 10.0));
-  points.push_back(gtsam::Point3(0.0, 10.0, 10.0));
-  points.push_back(gtsam::Point3(40.0, -30.0, 10.0));
-  points.push_back(gtsam::Point3(40.0, 10.0, 10.0));
-
-  if (noise > 0) {
+std::vector<gtsam::Point3> PerturbPoints(
+    const std::vector<gtsam::Point3>& points, double sigma_noise = 0) {
+  std::vector<gtsam::Point3> points_perturbed = points;
+  if (sigma_noise > 0) {
     // initialize random noise generation
-    std::normal_distribution<> gauss_noise_dist{0, noise};
+    std::normal_distribution<> gauss_noise_dist{0, sigma_noise};
     std::random_device rd{};
     std::mt19937 gen{rd()};
 
     gtsam::Pose3 delta_perturbed = gtsam::Pose3();
-    for (auto iter = points.begin(); iter != points.end(); ++iter) {
-      perturb_translation(std::abs(gauss_noise_dist(gen)), delta_perturbed);
-      gtsam::Point3 p_delta = delta_perturbed.translation();
-      *iter += p_delta;
+    for (auto iter = points_perturbed.begin(); iter != points_perturbed.end();
+         ++iter) {
+      PerturbTranslation(std::abs(gauss_noise_dist(gen)), delta_perturbed);
+      *iter += delta_perturbed.translation();
     }
   }
-  return points;
+  return points_perturbed;
 }
 
 std::vector<gtsam::Pose3> CreatePoses(const gtsam::Pose3& init,
                                       const gtsam::Pose3& delta, int steps,
-                                      double noise = 0) {
+                                      double sigma_noise = 0) {
   // initialize random noise generation
-  std::normal_distribution<> gauss_noise_dist{0, noise};
+  std::normal_distribution<> gauss_noise_dist{0, sigma_noise};
   std::random_device rd{};
   std::mt19937 gen{rd()};
 
@@ -73,8 +68,8 @@ std::vector<gtsam::Pose3> CreatePoses(const gtsam::Pose3& init,
   for (int i = 1; i < steps; ++i) {
     // perturb
     gtsam::Pose3 delta_perturbed = delta;
-    if (noise > 0) {
-      perturb_translation(std::abs(gauss_noise_dist(gen)), delta_perturbed);
+    if (sigma_noise > 0) {
+      PerturbTranslation(std::abs(gauss_noise_dist(gen)), delta_perturbed);
     }
 
     // propogate
@@ -104,39 +99,38 @@ void PrintPoses(const std::vector<gtsam::Pose3>& poses,
 }
 
 int main(int argc, char* argv[]) {
+  // seed
   srand(time(NULL));
 
-  // parameters
+  // noise parameters
   const double ODOMETRY_NOISE = 0.01;  // +/- 1cm relative accuracy from LVIO
-  const double IOT_NOISE = 0.02;  // +/- 2cm accuracy from Humatics UWB sensors
+  const double UWB_NOISE = 0.02;  // +/- 2cm accuracy from Humatics UWB sensors
 
-  // generates circular path
-  const gtsam::Rot3 R_INIT = gtsam::Rot3::Ypr(0, 0, 0);
-  const gtsam::Point3 P_INIT = gtsam::Point3(10, 0, 0);
-  const gtsam::Rot3 R_DELTA = gtsam::Rot3::Ypr(-M_PI / 220, 0, 0);
-  const gtsam::Point3 P_DELTA =
-      gtsam::Point3(sin(M_PI / 22), sin(M_PI / 22), 0);
-  const int STEPS = 440;
+  // UWB anchors
+  std::vector<gtsam::Point3> ground_truth_points;
+  ground_truth_points.push_back(gtsam::Point3(0.0, -30.0, 10.0));
+  ground_truth_points.push_back(gtsam::Point3(0.0, 10.0, 10.0));
+  ground_truth_points.push_back(gtsam::Point3(40.0, -30.0, 10.0));
+  ground_truth_points.push_back(gtsam::Point3(40.0, 10.0, 10.0));
 
   // noise
-  gtsam::Vector6 odometry_noise;
-  gtsam::Vector3 iot_noise;
-  odometry_noise << ODOMETRY_NOISE, ODOMETRY_NOISE, ODOMETRY_NOISE,
-      ODOMETRY_NOISE, ODOMETRY_NOISE, ODOMETRY_NOISE;
-  iot_noise << IOT_NOISE, IOT_NOISE, IOT_NOISE;
   auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(6) << 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6).finished());
-  auto pose_noise = gtsam::noiseModel::Diagonal::Sigmas(odometry_noise);
-  auto bearing_range_noise = gtsam::noiseModel::Diagonal::Sigmas(iot_noise);
+  auto pose_noise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(6) << ODOMETRY_NOISE, ODOMETRY_NOISE, ODOMETRY_NOISE,
+       ODOMETRY_NOISE, ODOMETRY_NOISE, ODOMETRY_NOISE)
+          .finished());
+  auto bearing_range_noise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(3) << UWB_NOISE, UWB_NOISE, UWB_NOISE).finished());
 
   // generate ground truth and measured poses/points
-  gtsam::Pose3 init_pose = gtsam::Pose3(R_INIT, P_INIT);
-  gtsam::Pose3 delta_pose = gtsam::Pose3(R_DELTA, P_DELTA);
-  auto ground_truth_poses = CreatePoses(init_pose, delta_pose, STEPS);
-  auto ground_truth_points = CreatePoints();
-  auto measured_poses =
-      CreatePoses(init_pose, delta_pose, STEPS, ODOMETRY_NOISE);
-  auto measured_points = CreatePoints(IOT_NOISE);
+  gtsam::Pose3 init_pose =
+      gtsam::Pose3(gtsam::Rot3::Ypr(0, 0, 0), gtsam::Point3(10, 0, 0));
+  gtsam::Pose3 delta_pose =
+      gtsam::Pose3(gtsam::Rot3::Ypr(-M_PI / 220, 0, 0),
+                   gtsam::Point3(sin(M_PI / 22), sin(M_PI / 22), 0));
+  auto ground_truth_poses = CreatePoses(init_pose, delta_pose, 440);
+  auto measured_poses = CreatePoses(init_pose, delta_pose, 440, ODOMETRY_NOISE);
 
   // output to txt files
   std::string full_file_path =
@@ -144,7 +138,6 @@ int main(int argc, char* argv[]) {
   PrintPoses(ground_truth_poses, full_file_path + "ground_truth_poses.txt");
   PrintPoints(ground_truth_points, full_file_path + "ground_truth_points.txt");
   PrintPoses(measured_poses, full_file_path + "measured_poses.txt");
-  PrintPoints(measured_points, full_file_path + "measured_points.txt");
 
   // Instantiate graph
   gtsam::ExpressionFactorGraph graph;
@@ -157,6 +150,9 @@ int main(int argc, char* argv[]) {
   for (size_t i = 0; i < measured_poses.size(); ++i) {
     // sensor pose expressed in world frame
     const gtsam::Pose3 T_WORLD_BODY = ground_truth_poses[i];
+
+    // generate noisy set of points as measured from robot
+    auto measured_points = PerturbPoints(ground_truth_points, UWB_NOISE);
     for (size_t j = 0; j < measured_points.size(); ++j) {
       // Create differentiable expression of the measurement from the body-frame
       gtsam::Expression<BearingRange3D> prediction_ =
@@ -183,7 +179,7 @@ int main(int argc, char* argv[]) {
   // provide initial estimates
   gtsam::Values initial;
   for (size_t i = 0; i < ground_truth_poses.size(); ++i)
-    initial.insert(gtsam::Symbol('x', i), ground_truth_poses[i]);
+    initial.insert<gtsam::Pose3>(gtsam::Symbol('x', i), ground_truth_poses[i]);
   for (size_t j = 0; j < ground_truth_points.size(); ++j)
     initial.insert<gtsam::Point3>(gtsam::Symbol('l', j),
                                   ground_truth_points[j]);

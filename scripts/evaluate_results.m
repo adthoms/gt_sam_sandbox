@@ -3,7 +3,6 @@ clc, clear, format long, format compact, close all
 % load data
 ground_truth_landmarks = importdata('../results/ground_truth_points.txt');
 ground_truth_poses = importdata('../results/ground_truth_poses.txt');
-measured_landmarks = importdata('../results/measured_points.txt');
 measured_poses = importdata('../results/measured_poses.txt');
 optimized_poses = importdata('../results/optimized_poses.txt');
 
