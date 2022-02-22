@@ -90,11 +90,13 @@ void PrintPoints(const std::vector<gtsam::Point3>& points,
 void PrintPoses(const std::vector<gtsam::Pose3>& poses,
                 const std::string& output_dir) {
   std::ofstream file(output_dir);
+  int t = 0;
   for (gtsam::Pose3 n : poses) {
     const Eigen::Matrix3d R = n.matrix().block<3, 3>(0, 0);
     const Eigen::Quaterniond q(R);
-    file << q.w() << " " << q.x() << " " << q.y() << " " << q.z() << " "
-         << n.x() << " " << n.y() << " " << n.z() << std::endl;
+    file << t << " " << n.x() << " " << n.y() << " " << n.z() << " " << q.x()
+         << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+    t++;
   }
 }
 
