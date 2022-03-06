@@ -105,19 +105,24 @@ int main(int argc, char* argv[]) {
   srand(time(NULL));
 
   // noise parameters
-  const double ODOMETRY_NOISE = 0.01;  // +/- 1cm relative accuracy from LVIO
-  const double UWB_NOISE = 0.02;  // +/- 2cm accuracy from Humatics UWB sensors
+  const double ODOMETRY_NOISE = 0.01;  // +/- 5cm relative accuracy from LVIO
+  const double UWB_NOISE = 0.05;  // +/- 5cm accuracy from Humatics UWB sensors
 
   // UWB anchors
   std::vector<gtsam::Point3> ground_truth_points;
   ground_truth_points.push_back(gtsam::Point3(0.0, -30.0, 10.0));
+  //ground_truth_points.push_back(gtsam::Point3(0, 0, 10.0));
+  //ground_truth_points.push_back(gtsam::Point3(0.0, -10.0, 10.0));
   ground_truth_points.push_back(gtsam::Point3(0.0, 10.0, 10.0));
   ground_truth_points.push_back(gtsam::Point3(40.0, -30.0, 10.0));
+  //ground_truth_points.push_back(gtsam::Point3(40.0, -10.0, 10.0));
   ground_truth_points.push_back(gtsam::Point3(40.0, 10.0, 10.0));
+  //ground_truth_points.push_back(gtsam::Point3(40.0, 0, 10.0));
 
   // noise
+  // og code line:gtsam::Vector(6) << 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6).finished()
   auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6).finished());
+      (gtsam::Vector(6) << 2e-6, 2e-6, 2e-6, 2e-6, 2e-6, 2e-6).finished());
   auto pose_noise = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(6) << ODOMETRY_NOISE, ODOMETRY_NOISE, ODOMETRY_NOISE,
        ODOMETRY_NOISE, ODOMETRY_NOISE, ODOMETRY_NOISE)
