@@ -35,41 +35,49 @@ double randf(double ub, double lb) {
 
 int RandomSign() { return round(randf(-1, 1)); };
 
-void PerturbTranslation(double perturbation, gtsam::Pose3& delta) {
-  // divide total perturbation among xyz axes
-  perturbation = std::abs(perturbation);
-  const double x_error = RandomSign() * randf(perturbation, 0);
-  const double y2_ub = pow(perturbation, 2) - pow(x_error, 2);
-  const double y_error = RandomSign() * randf(sqrt(y2_ub), 0);
-  const double z2_ub = y2_ub - pow(y_error, 2);
-  const double z_error = RandomSign() * sqrt(z2_ub);
-
-  // perturb delta (assume noise is restricted to translation)
-  delta = delta.compose(gtsam::Pose3(gtsam::Rot3::Rodrigues(0, 0, 0),
-                                     gtsam::Point3(x_error, y_error, z_error)));
+void PerturbPoint(gtsam::Point3& perturbed_point, double perturbation = 0) {
+  if (perturbation > 0) {
+    // divide total perturbation among xyz axes
+    const double total2_error = perturbation * perturbation;
+    const double x2_error = randf(total2_error, 0);
+    const double y2_error = randf(total2_error - x2_error, 0);
+    const double z2_error = total2_error - x2_error - y2_error;
+    gtsam::Point3 delta(RandomSign() * sqrt(x2_error),
+                        RandomSign() * sqrt(y2_error),
+                        RandomSign() * sqrt(z2_error));
+    perturbed_point += delta;
+  }
 }
 
-gtsam::Point3 PerturbPoint(const gtsam::Point3& point,
-                           double perturbation = 0) {
-  gtsam::Point3 point_perturbed = point;
+void PerturbPose(gtsam::Pose3& perturbed_pose, double perturbation = 0) {
   if (perturbation > 0) {
-    gtsam::Pose3 delta_perturbed = gtsam::Pose3();
-    PerturbTranslation(perturbation, delta_perturbed);
-    point_perturbed += delta_perturbed.translation();
+    // assume error in translation only
+    gtsam::Point3 perturbed_translation;
+    PerturbPoint(perturbed_translation, perturbation);
+
+    // perturb delta (assume noise is restricted to translation)
+    gtsam::Pose3 delta_perturbed =
+        gtsam::Pose3(gtsam::Rot3::Rodrigues(0, 0, 0), perturbed_translation);
+    perturbed_pose = perturbed_pose.compose(delta_perturbed);
   }
-  return point_perturbed;
 }
 
 std::vector<gtsam::Pose3> CreatePoses(const gtsam::Pose3& init,
                                       const gtsam::Pose3& delta, int steps,
-                                      double error = 0) {
-  GaussianDistribution gauss_dist(error, error);
+                                      double sigma = 0) {
+  GaussianDistribution gauss_dist(0, sigma);
   std::vector<gtsam::Pose3> poses;
-  poses.push_back(init);
+
+  // perturb initial pose
+  gtsam::Pose3 delta_init;
+  PerturbPose(delta_init, gauss_dist.GetRandomValue());
+  poses.push_back(init.compose(delta_init));
+
+  // perturb poses incrementally to simulate drift
   for (int i = 1; i < steps; ++i) {
     gtsam::Pose3 delta_perturbed = delta;
-    if (error > 0) {
-      PerturbTranslation(gauss_dist.GetRandomValue(), delta_perturbed);
+    if (sigma > 0) {
+      PerturbPose(delta_perturbed, gauss_dist.GetRandomValue());
     }
     poses.push_back(poses[i - 1].compose(delta_perturbed));
   }
@@ -103,9 +111,9 @@ int main(int argc, char* argv[]) {
 
   // parameters
   const double ODOMETRY_NOISE = 0.01;  // +/- 1cm relative accuracy from LVIO
-  const double WIRELESS_NOISE = 0.05;  // +/- [1,5,10]cm accuracy from UWB
-  const double MAX_ANCHOR_TO_TAG_DISTANCE = 15;
-  int ODOMETRY_STEPS = 442;  // 442 navigates robot in full circle
+  const double WIRELESS_NOISE = 0.5;   // +/- [1,5,10]cm accuracy from UWB
+  const double MAX_ANCHOR_TO_TAG_DISTANCE = 15;  // max wireless sensing
+  const int ODOMETRY_STEPS = 442;  // 442 navigates robot in full circle
 
   // [4,8] wireless anchors
   std::vector<gtsam::Point3> ground_truth_anchor_points;
@@ -130,8 +138,8 @@ int main(int argc, char* argv[]) {
   ground_truth_tag_points.push_back(gtsam::Point3(30.0, 10.0, 10.0));
 
   // noise
-  GaussianDistribution odometry_dist(ODOMETRY_NOISE, ODOMETRY_NOISE);
-  GaussianDistribution wireless_dist(WIRELESS_NOISE, WIRELESS_NOISE);
+  GaussianDistribution odometry_dist(0, ODOMETRY_NOISE);
+  GaussianDistribution wireless_dist(0, WIRELESS_NOISE);
   auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(3) << 1e-12, 1e-12, 1e-12).finished());
   auto odometry_noise = gtsam::noiseModel::Diagonal::Sigmas(
@@ -177,8 +185,8 @@ int main(int argc, char* argv[]) {
         ground_truth_robot_poses[i].translation();
     for (size_t j = 0; j < ground_truth_anchor_points.size(); ++j) {
       const gtsam::Point3& t_WORLD_ANCHOR = ground_truth_anchor_points[j];
-      const gtsam::Point3 t_WORLD_ROBOT_PERTURB =
-          PerturbPoint(t_WORLD_ROBOT, wireless_dist.GetRandomValue());
+      gtsam::Point3 t_WORLD_ROBOT_PERTURB = t_WORLD_ROBOT;
+      PerturbPoint(t_WORLD_ROBOT_PERTURB, wireless_dist.GetRandomValue());
       graph.addExpressionFactor(
           between(gtsam::Point3_('a', j), gtsam::Point3_('x', i)),
           t_WORLD_ANCHOR.between(t_WORLD_ROBOT_PERTURB), wireless_noise);
@@ -187,8 +195,8 @@ int main(int argc, char* argv[]) {
         const gtsam::Point3& t_WORLD_TAG = ground_truth_tag_points[k];
         if (t_WORLD_ANCHOR.distance(t_WORLD_TAG) <=
             MAX_ANCHOR_TO_TAG_DISTANCE) {
-          const gtsam::Point3 t_WORLD_TAG_PERTURB =
-              PerturbPoint(t_WORLD_TAG, wireless_dist.GetRandomValue());
+          gtsam::Point3 t_WORLD_TAG_PERTURB = t_WORLD_TAG;
+          PerturbPoint(t_WORLD_TAG_PERTURB, wireless_dist.GetRandomValue());
           graph.addExpressionFactor(
               between(gtsam::Point3_('a', j), gtsam::Point3_('t', k)),
               t_WORLD_ANCHOR.between(t_WORLD_TAG_PERTURB), wireless_noise);
@@ -204,21 +212,23 @@ int main(int argc, char* argv[]) {
           odometry_noise);
     }
   }
-  graph.print();
 
   // provide initial estimates
   gtsam::Values initial;
-  for (size_t i = 0; i < ground_truth_robot_poses.size(); ++i) {
+  for (size_t i = 0; i < measured_robot_poses.size(); ++i) {
     initial.insert<gtsam::Point3>(gtsam::Symbol('x', i),
-                                  ground_truth_robot_poses[i].translation());
+                                  measured_robot_poses[i].translation());
   }
   for (size_t i = 0; i < ground_truth_anchor_points.size(); ++i) {
+    gtsam::Point3 t_WORLD_ANCHOR_PERTURB = ground_truth_anchor_points[i];
+    PerturbPoint(t_WORLD_ANCHOR_PERTURB, 10 * wireless_dist.GetRandomValue());
     initial.insert<gtsam::Point3>(gtsam::Symbol('a', i),
-                                  ground_truth_anchor_points[i]);
+                                  t_WORLD_ANCHOR_PERTURB);
   }
   for (size_t i = 0; i < ground_truth_tag_points.size(); ++i) {
-    initial.insert<gtsam::Point3>(gtsam::Symbol('t', i),
-                                  ground_truth_tag_points[i]);
+    gtsam::Point3 t_WORLD_TAG_PERTURB = ground_truth_anchor_points[i];
+    PerturbPoint(t_WORLD_TAG_PERTURB, 10 * wireless_dist.GetRandomValue());
+    initial.insert<gtsam::Point3>(gtsam::Symbol('t', i), t_WORLD_TAG_PERTURB);
   }
 
   // optimize graph
