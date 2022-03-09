@@ -1,24 +1,27 @@
 clc, clear, format long, format compact, close all
 
 % load data
-ground_truth_landmarks = importdata('../results/ground_truth_points.txt');
-ground_truth_poses = importdata('../results/ground_truth_poses.txt');
-measured_poses = importdata('../results/measured_poses.txt');
-optimized_poses = importdata('../results/optimized_poses.txt');
+ground_truth_robot_poses = importdata('../results/ground_truth_robot_poses.txt');
+ground_truth_anchor_points = importdata('../results/ground_truth_anchor_points.txt');
+ground_truth_tag_points = importdata('../results/ground_truth_tag_points.txt');
+measured_robot_poses = importdata('../results/measured_robot_poses.txt');
+optimized_robot_points = importdata('../results/optimized_robot_points.txt');
+optimized_anchor_points = importdata('../results/optimized_anchor_points.txt');
+optimized_tag_points = importdata('../results/optimized_tag_points.txt');
 
 % get variables
-q_gt = ground_truth_poses(:,[8,5:7]);
-t_gt = ground_truth_poses(:,2:4);
-q_m = measured_poses(:,[8,5:7]);
-t_m = measured_poses(:,2:4);
-q_opt = optimized_poses(:,[8,5:7]);
-t_opt = optimized_poses(:,2:4);
+ground_truth_robot_rotation = ground_truth_robot_poses(:,[8,5:7]);
+ground_truth_robot_position = ground_truth_robot_poses(:,2:4);
+measured_robot_position = measured_robot_poses(:,2:4);
 
 % plot
 hold on
-plotTransforms(t_gt(1:5:end,:), q_gt(1:5:end,:), 'FrameSize', 2)
-plot3(t_gt(:,1),t_gt(:,2), t_gt(:,3),'k-')
-plot3(ground_truth_landmarks(:,1),ground_truth_landmarks(:,2),ground_truth_landmarks(:,3),'ko','MarkerFaceColor','k')
+plotTransforms(ground_truth_robot_position(1:5:end,:), ground_truth_robot_rotation(1:5:end,:), 'FrameSize', 2)
+plot3(ground_truth_robot_position(:,1),ground_truth_robot_position(:,2), ground_truth_robot_position(:,3),'k.-')
+plot3(measured_robot_position(:,1),measured_robot_position(:,2), measured_robot_position(:,3),'r.-')
+plot3(ground_truth_anchor_points(:,1),ground_truth_anchor_points(:,2),ground_truth_anchor_points(:,3),'ko','MarkerFaceColor','k')
+plot3(ground_truth_tag_points(:,1),ground_truth_tag_points(:,2),ground_truth_tag_points(:,3),'ko','MarkerFaceColor','m')
+
 set(gca,'TickLabelInterpreter', 'latex')
 zlim([0 10])
 xlabel('x','Interpreter','latex')
@@ -28,5 +31,8 @@ box on
 hold off
 
 % Translational Root Mean Squared Error
-RMSE_m = sqrt(mean((t_gt - t_m).^2))
-RMSE_opt = sqrt(mean((t_gt - t_opt).^2))
+RMSE_robot_measured = sqrt(sum(mean((ground_truth_robot_position - measured_robot_position).^2)))
+RMSE_robot_optimized = sqrt(sum(mean((ground_truth_robot_position - optimized_robot_points).^2)))
+
+RMSE_anchor_optimized = sqrt(sum(mean((ground_truth_anchor_points - optimized_anchor_points).^2)))
+RMSE_tag_optimized = sqrt(sum(mean((ground_truth_tag_points - optimized_tag_points).^2)))
