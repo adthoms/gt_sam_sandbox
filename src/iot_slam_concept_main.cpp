@@ -64,20 +64,25 @@ void PerturbPose(gtsam::Pose3& perturbed_pose, double perturbation = 0) {
 
 std::vector<gtsam::Pose3> CreatePoses(const gtsam::Pose3& init,
                                       const gtsam::Pose3& delta, int steps,
-                                      double sigma = 0) {
-  GaussianDistribution gauss_dist(0, sigma);
+                                      double error = 0) {
+  // assume average error with equal std dev
+  GaussianDistribution gauss_dist(error, error);
   std::vector<gtsam::Pose3> poses;
 
   // perturb initial pose
   gtsam::Pose3 delta_init;
-  PerturbPose(delta_init, gauss_dist.GetRandomValue());
+  if (error > 0) {
+    PerturbPose(delta_init,
+                gauss_dist.GetRandomValue() * delta.translation().norm());
+  }
   poses.push_back(init.compose(delta_init));
 
   // perturb poses incrementally to simulate drift
   for (int i = 1; i < steps; ++i) {
     gtsam::Pose3 delta_perturbed = delta;
-    if (sigma > 0) {
-      PerturbPose(delta_perturbed, gauss_dist.GetRandomValue());
+    if (error > 0) {
+      PerturbPose(delta_perturbed,
+                  gauss_dist.GetRandomValue() * delta.translation().norm());
     }
     poses.push_back(poses[i - 1].compose(delta_perturbed));
   }
@@ -110,10 +115,10 @@ int main(int argc, char* argv[]) {
   srand(time(NULL));
 
   // parameters
-  const double ODOMETRY_NOISE = 0.01;  // +/- 1cm relative accuracy from LVIO
-  const double WIRELESS_NOISE = 0.5;   // +/- [1,5,10]cm accuracy from UWB
-  const double MAX_ANCHOR_TO_TAG_DISTANCE = 15;  // max wireless sensing
-  const int ODOMETRY_STEPS = 442;  // 442 navigates robot in full circle
+  const double ODOMETRY_NOISE = 0.01;    // +/- 1cm relative accuracy from LVIO
+  const double WIRELESS_NOISE = 0.05;    // +/- [1,5,10]cm accuracy from UWB
+  const double MAX_WIRELESS_RANGE = 15;  // max wireless sensing
+  const int ODOMETRY_STEPS = 442;        // 442 navigates robot in full circle
 
   // [4,8] wireless anchors
   std::vector<gtsam::Point3> ground_truth_anchor_points;
@@ -193,8 +198,7 @@ int main(int argc, char* argv[]) {
 
       for (size_t k = 0; k < ground_truth_tag_points.size(); ++k) {
         const gtsam::Point3& t_WORLD_TAG = ground_truth_tag_points[k];
-        if (t_WORLD_ANCHOR.distance(t_WORLD_TAG) <=
-            MAX_ANCHOR_TO_TAG_DISTANCE) {
+        if (t_WORLD_ANCHOR.distance(t_WORLD_TAG) <= MAX_WIRELESS_RANGE) {
           gtsam::Point3 t_WORLD_TAG_PERTURB = t_WORLD_TAG;
           PerturbPoint(t_WORLD_TAG_PERTURB, wireless_dist.GetRandomValue());
           graph.addExpressionFactor(
@@ -221,13 +225,13 @@ int main(int argc, char* argv[]) {
   }
   for (size_t i = 0; i < ground_truth_anchor_points.size(); ++i) {
     gtsam::Point3 t_WORLD_ANCHOR_PERTURB = ground_truth_anchor_points[i];
-    PerturbPoint(t_WORLD_ANCHOR_PERTURB, 10 * wireless_dist.GetRandomValue());
+    PerturbPoint(t_WORLD_ANCHOR_PERTURB, wireless_dist.GetRandomValue());
     initial.insert<gtsam::Point3>(gtsam::Symbol('a', i),
                                   t_WORLD_ANCHOR_PERTURB);
   }
   for (size_t i = 0; i < ground_truth_tag_points.size(); ++i) {
     gtsam::Point3 t_WORLD_TAG_PERTURB = ground_truth_anchor_points[i];
-    PerturbPoint(t_WORLD_TAG_PERTURB, 10 * wireless_dist.GetRandomValue());
+    PerturbPoint(t_WORLD_TAG_PERTURB, wireless_dist.GetRandomValue());
     initial.insert<gtsam::Point3>(gtsam::Symbol('t', i), t_WORLD_TAG_PERTURB);
   }
 
@@ -235,14 +239,34 @@ int main(int argc, char* argv[]) {
   gtsam::Values result =
       gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
 
+  // print optimized robot pose
+  std::vector<gtsam::Point3> optimized_robot_points;
+  for (size_t i = 0; i < ground_truth_robot_poses.size(); ++i) {
+    optimized_robot_points.push_back(
+        result.at<gtsam::Point3>(gtsam::Symbol('x', i)));
+  }
+
+  PrintPoints(optimized_robot_points,
+              full_file_path + "optimized_robot_points.txt");
+
+  // print optimized anchor positions
+  std::vector<gtsam::Point3> optimized_anchor_points;
+  for (size_t i = 0; i < ground_truth_anchor_points.size(); ++i) {
+    optimized_anchor_points.push_back(
+        result.at<gtsam::Point3>(gtsam::Symbol('a', i)));
+  }
+
+  PrintPoints(optimized_anchor_points,
+              full_file_path + "optimized_anchor_points.txt");
+
   // print optimized tag positions
-  std::vector<gtsam::Point3> optimized_tag_position;
+  std::vector<gtsam::Point3> optimized_tag_points;
   for (size_t i = 0; i < ground_truth_tag_points.size(); ++i) {
-    optimized_tag_position.push_back(
+    optimized_tag_points.push_back(
         result.at<gtsam::Point3>(gtsam::Symbol('t', i)));
   }
 
-  PrintPoints(optimized_tag_position,
+  PrintPoints(optimized_tag_points,
               full_file_path + "optimized_tag_points.txt");
 
   return 0;
