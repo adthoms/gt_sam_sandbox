@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
   const double ODOMETRY_NOISE = 0.01;    // +/- 1cm relative accuracy from LVIO
   const double WIRELESS_NOISE = 0.05;    // +/- [1,5,10]cm accuracy from UWB
   const double MAX_WIRELESS_RANGE = 15;  // max wireless sensing
-  const int ODOMETRY_STEPS = 442;        // 442 navigates robot in full circle
+  const int ODOMETRY_STEPS = 1;          // 442 navigates robot in full circle
 
   // [4,8] wireless anchors
   std::vector<gtsam::Point3> ground_truth_anchor_points;
@@ -188,6 +188,41 @@ int main(int argc, char* argv[]) {
   for (size_t i = 0; i < ground_truth_robot_poses.size(); ++i) {
     const gtsam::Point3& t_WORLD_ROBOT =
         ground_truth_robot_poses[i].translation();
+
+    // add constraints for each step for distributed case
+
+    // [a0,a4]
+    gtsam::Point3 t_WORLD_ANCHOR_4_PERTURB = ground_truth_anchor_points[4];
+    PerturbPoint(t_WORLD_ANCHOR_4_PERTURB, wireless_dist.GetRandomValue());
+    graph.addExpressionFactor(
+        between(gtsam::Point3_('a', 0), gtsam::Point3_('a', 4)),
+        ground_truth_anchor_points[0].between(t_WORLD_ANCHOR_4_PERTURB),
+        wireless_noise);
+
+    // [a1,a5]
+    gtsam::Point3 t_WORLD_ANCHOR_5_PERTURB = ground_truth_anchor_points[5];
+    PerturbPoint(t_WORLD_ANCHOR_5_PERTURB, wireless_dist.GetRandomValue());
+    graph.addExpressionFactor(
+        between(gtsam::Point3_('a', 1), gtsam::Point3_('a', 5)),
+        ground_truth_anchor_points[1].between(t_WORLD_ANCHOR_5_PERTURB),
+        wireless_noise);
+
+    // [a2,a6]
+    gtsam::Point3 t_WORLD_ANCHOR_6_PERTURB = ground_truth_anchor_points[6];
+    PerturbPoint(t_WORLD_ANCHOR_6_PERTURB, wireless_dist.GetRandomValue());
+    graph.addExpressionFactor(
+        between(gtsam::Point3_('a', 2), gtsam::Point3_('a', 6)),
+        ground_truth_anchor_points[2].between(t_WORLD_ANCHOR_6_PERTURB),
+        wireless_noise);
+
+    // [a3,a7]
+    gtsam::Point3 t_WORLD_ANCHOR_7_PERTURB = ground_truth_anchor_points[7];
+    PerturbPoint(t_WORLD_ANCHOR_7_PERTURB, wireless_dist.GetRandomValue());
+    graph.addExpressionFactor(
+        between(gtsam::Point3_('a', 3), gtsam::Point3_('a', 7)),
+        ground_truth_anchor_points[3].between(t_WORLD_ANCHOR_7_PERTURB),
+        wireless_noise);
+
     for (size_t j = 0; j < ground_truth_anchor_points.size(); ++j) {
       const gtsam::Point3& t_WORLD_ANCHOR = ground_truth_anchor_points[j];
       gtsam::Point3 t_WORLD_ROBOT_PERTURB = t_WORLD_ROBOT;
