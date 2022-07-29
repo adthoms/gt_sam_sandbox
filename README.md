@@ -6,12 +6,7 @@ A repository for experiments conducted with GTSAM
 
 ## Dependency
 
-See the following [link](https://github.com/BEAMRobotics/beam_robotics/wiki/Beam-Robotics-Installation-Guide) for installing the following dependencies:
-
-- install_cmake
-- install_eigen3
-- install_gtsam
-
+This package has been built within the [Beam Robotics](https://github.com/BEAMRobotics/beam_robotics/wiki/Beam-Robotics-Installation-Guide) software ecosystem, with GTSAM optionally installed:
 ---
 
 ## Install
@@ -37,8 +32,3 @@ cd ~/catkin_ws/devel/lib/gt_sam_sandbox
 ```
 
 ---
-
-## TODOs
-
-- generate factors between landmarks (representing iot devices)
-- calibrate between factor noise to represent noise expected of LIO/VIO/LVIO odometry system
