@@ -6,6 +6,13 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 find_package(
+  beam REQUIRED
+  COMPONENTS
+    utils
+    mapping
+)
+
+find_package(
   catkin REQUIRED
   COMPONENTS
     roscpp
@@ -34,5 +41,18 @@ add_executable(${PROJECT_NAME}_iot_slam_concept_main
 )
 target_link_libraries(${PROJECT_NAME}_iot_slam_concept_main
   ${catkin_LIBRARIES}
+  beam::utils
+  beam::mapping
+  gtsam
+)
+
+## Add executables
+add_executable(${PROJECT_NAME}_iot_widget_main
+	src/iot_widget_main.cpp
+)
+target_link_libraries(${PROJECT_NAME}_iot_widget_main
+  ${catkin_LIBRARIES}
+  beam::utils
+  beam::mapping
   gtsam
 )
