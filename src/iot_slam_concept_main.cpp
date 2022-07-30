@@ -11,6 +11,8 @@ int main(int argc, char* argv[]) {
   LoadFromTXT(JOINTS_POSITION_FILE, joint_position_map);
   LoadFromTXT(TAGS_POSITION_FILE, tag_position_map);
   LoadFromTXT(ANCHORS_POSITION_FILE, anchor_position_map);
+
+  // Read in floor, joint, tag, and anchor associations
   LoadFromTXT(FLOOR_ANCHOR_ASSOCIATION_FILE, floor_anchor_association_map);
   LoadFromTXT(JOINT_TAG_ASSOCIATION_FILE, joint_tag_association_map);
   LoadFromTXT(TAG_ANCHOR_ASSOCIATION_FILE, tag_anchor_association_map);
@@ -42,8 +44,8 @@ int main(int argc, char* argv[]) {
       GeneratePoses(init_pose, delta_pose, ODOMETRY_STEPS, ODOMETRY_NOISE);
 
   // output to txt files
-  std::string full_file_path =
-      ros::package::getPath("gt_sam_sandbox") + "/results/";
+  PrintPoses(ground_truth_robot_poses,
+             full_file_path + "ground_truth_robot_poses.txt");
   PrintPoses(measured_robot_poses, full_file_path + "measured_robot_poses.txt");
 
   // Instantiate graph

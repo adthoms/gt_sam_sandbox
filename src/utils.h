@@ -30,11 +30,11 @@ const double NUM_TAG_ANCHOR_MEASUREMENTS = 2;  // number of measurements
 NodePositionMap joint_position_map;
 NodePositionMap tag_position_map;
 NodePositionMap anchor_position_map;
-NodeAssociationMap floor_anchor_association_map;
 NodeAssociationMap joint_tag_association_map;
 NodeAssociationMap tag_anchor_association_map;
+NodeAssociationMap floor_anchor_association_map;
 
-// Input
+// input
 std::string JOINTS_POSITION_FILE =
     ros::package::getPath("gt_sam_sandbox") + "/input/joint_positions.txt";
 std::string TAGS_POSITION_FILE =
@@ -51,6 +51,10 @@ std::string JOINT_TAG_ASSOCIATION_FILE =
 std::string TAG_ANCHOR_ASSOCIATION_FILE =
     ros::package::getPath("gt_sam_sandbox") +
     "/input/tag_anchor_association.txt";
+
+// ouput
+std::string full_file_path =
+    ros::package::getPath("gt_sam_sandbox") + "/results/";
 
 /**
  * @brief This class constructs a Gaussian distribution for generating noise
