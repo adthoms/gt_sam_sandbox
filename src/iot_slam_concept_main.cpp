@@ -21,17 +21,6 @@ int main(int argc, char* argv[]) {
   GaussianDistribution odometry_dist(0, ODOMETRY_NOISE);
   GaussianDistribution wireless_dist(0, WIRELESS_NOISE);
 
-  // TODO: need to effectively simulate initialization from given world coord
-  // system. Look at reported literature
-  auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(3) << 1e-12, 1e-12, 1e-12).finished());
-  auto odometry_noise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(3) << ODOMETRY_NOISE, ODOMETRY_NOISE, ODOMETRY_NOISE)
-          .finished());
-  auto wireless_noise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(3) << WIRELESS_NOISE, WIRELESS_NOISE, WIRELESS_NOISE)
-          .finished());
-
   // generate ground truth and measured robot positions
   gtsam::Pose3 init_pose =
       gtsam::Pose3(gtsam::Rot3::Ypr(0, 0, 0), gtsam::Point3(10, 0, 0));

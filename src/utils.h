@@ -7,9 +7,9 @@
 #include <beam_utils/math.h>
 
 #include <gtsam/inference/Symbol.h>
-#include <gtsam/geometry/BearingRange.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Point3.h>
+#include <gtsam/linear/NoiseModel.h>
 #include <ros/package.h>
 
 using AssociationSet = std::set<int>;
@@ -55,6 +55,17 @@ std::string TAG_ANCHOR_ASSOCIATION_FILE =
 // ouput
 std::string full_file_path =
     ros::package::getPath("gt_sam_sandbox") + "/results/";
+
+// TODO: need to effectively simulate initialization from given world coord
+// system. Look at reported literature
+auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
+    (gtsam::Vector(3) << 1e-12, 1e-12, 1e-12).finished());
+auto odometry_noise = gtsam::noiseModel::Diagonal::Sigmas(
+    (gtsam::Vector(3) << ODOMETRY_NOISE, ODOMETRY_NOISE, ODOMETRY_NOISE)
+        .finished());
+auto wireless_noise = gtsam::noiseModel::Diagonal::Sigmas(
+    (gtsam::Vector(3) << WIRELESS_NOISE, WIRELESS_NOISE, WIRELESS_NOISE)
+        .finished());
 
 /**
  * @brief This class constructs a Gaussian distribution for generating noise
