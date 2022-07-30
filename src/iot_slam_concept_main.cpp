@@ -11,6 +11,7 @@ int main(int argc, char* argv[]) {
   LoadFromTXT(JOINTS_POSITION_FILE, joint_position_map);
   LoadFromTXT(TAGS_POSITION_FILE, tag_position_map);
   LoadFromTXT(ANCHORS_POSITION_FILE, anchor_position_map);
+  LoadFromTXT(FLOOR_ANCHOR_ASSOCIATION_FILE, floor_anchor_association_map);
   LoadFromTXT(JOINT_TAG_ASSOCIATION_FILE, joint_tag_association_map);
   LoadFromTXT(TAG_ANCHOR_ASSOCIATION_FILE, tag_anchor_association_map);
 

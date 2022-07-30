@@ -30,6 +30,7 @@ const double NUM_TAG_ANCHOR_MEASUREMENTS = 2;  // number of measurements
 NodePositionMap joint_position_map;
 NodePositionMap tag_position_map;
 NodePositionMap anchor_position_map;
+NodeAssociationMap floor_anchor_association_map;
 NodeAssociationMap joint_tag_association_map;
 NodeAssociationMap tag_anchor_association_map;
 
@@ -41,6 +42,9 @@ std::string TAGS_POSITION_FILE =
 std::string ANCHORS_POSITION_FILE =
     ros::package::getPath("gt_sam_sandbox") + "/input/anchor_positions.txt";
 
+std::string FLOOR_ANCHOR_ASSOCIATION_FILE =
+    ros::package::getPath("gt_sam_sandbox") +
+    "/input/floor_anchor_association.txt";
 std::string JOINT_TAG_ASSOCIATION_FILE =
     ros::package::getPath("gt_sam_sandbox") +
     "/input/joint_tag_association.txt";
