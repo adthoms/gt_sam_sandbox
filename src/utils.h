@@ -97,7 +97,7 @@ bool LoadFromTXT(const std::string& input_pose_file_path,
 }
 
 /**
- * @brief load a text file with format [ID ID1 ... IDN] into a
+ * @brief load a text file with format [ID_a ID_b] into a
  * NodeAssociationMap map
  */
 bool LoadFromTXT(const std::string& input_pose_file_path,
@@ -110,9 +110,7 @@ bool LoadFromTXT(const std::string& input_pose_file_path,
     std::vector<double> vals;
     if (beam::StringToNumericValues(delim, s, vals)) {
       const int node_id = vals.at(0);
-      const AssociationSet association_set(vals.begin() + 1, vals.end());
-      // assume no duplicate associations
-      node_association_map[node_id] = association_set;
+      node_association_map[node_id].insert(vals.at(1));
     }
   }
 
@@ -187,6 +185,7 @@ std::vector<gtsam::Pose3> GeneratePoses(const gtsam::Pose3& init,
     }
     poses.push_back(poses[i - 1].compose(delta_perturbed));
   }
+
   return poses;
 }
 
@@ -232,5 +231,22 @@ void PrintMap(const NodePositionMap& node_position_map,
   for (const auto& [id, position] : node_position_map) {
     file << id << " " << position.x() << " " << position.y() << " "
          << position.z() << std::endl;
+  }
+}
+
+/**
+ * @brief Write NodeAssociationMap to a txt file
+ * @param node_position_map instance of NodeAssociationMap to be written
+ * @param output_dir directory to write file
+ */
+void PrintMap(const NodeAssociationMap& node_association_map,
+              const std::string& output_dir) {
+  std::ofstream file(output_dir);
+  for (const auto& [id, association] : node_association_map) {
+    file << id << " ";
+    for (auto iter = association.begin(); iter != association.end(); ++iter) {
+      file << *iter << " ";
+    }
+    file << std::endl;
   }
 }
