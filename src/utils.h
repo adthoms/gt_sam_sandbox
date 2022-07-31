@@ -22,8 +22,6 @@ const double ODOMETRY_NOISE = 0.05;    // +/- 1cm relative accuracy from LVIO
 const double WIRELESS_NOISE = 0.10;    // +/- [1,5,10]cm accuracy from UWB
 const double MAX_WIRELESS_RANGE = 15;  // max wireless sensing
 const int ODOMETRY_STEPS = 442;        // 442 navigates robot in full circle
-const double TAG_OFFSET = 0.2;         // offset between joint and tag
-const double ANCHOR_OFFSET = 0.4;      // offset between joint and anchor
 const double NUM_TAG_ANCHOR_MEASUREMENTS = 2;  // number of measurements
 
 // variables
